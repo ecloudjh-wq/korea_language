@@ -3,6 +3,25 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!--
+URL 파라미터 예시
+?page=home
+?page=learning
+?page=wordPractice
+?page=sentencePractice
+?page=conversationPractice
+?page=content
+?page=collection
+?page=shop
+?page=my
+?page=morning
+?page=alarm
+?page=game&stage=2
+?page=game&stage=3
+?page=game&stage=4
+?page=game&stage=5
+?page=game&stage=special
+-->
 <title>AI 한국어 학습 앱 HTML 프로토타입</title>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
@@ -2908,7 +2927,7 @@ p,.info-desc,.info-sub,.small-label,.content-body p,
   </symbol>
 
 </svg>
-<div class="prototype"><section class="stage"><div class="stage-label"></div><div class="stage-tools"><button class="stage-tool" id="resetBtn">처음으로</button><button class="stage-tool" id="openInfoBtn">페이지 설명</button></div><div class="phone"><div class="phone-screen" id="phoneScreen"><div class="toast" id="toast"></div>
+<div class="prototype"><section class="stage"><div class="stage-label">모바일 앱 HTML 프로토타입</div><div class="stage-tools"><button class="stage-tool" id="resetBtn">처음으로</button><button class="stage-tool" id="openInfoBtn">페이지 설명</button></div><div class="phone"><div class="phone-screen" id="phoneScreen"><div class="toast" id="toast"></div>
 
 <section class="app-page active" data-page="onboarding"><div class="page-scroll"><div class="onboard">
   <div class="onboard-progress"><button class="onboard-back" data-go="home">←</button><div class="onboard-line"><span></span></div><div class="onboard-step">Step 2/4</div><button class="onboard-close" data-go="home">닫기</button></div>
@@ -3389,8 +3408,146 @@ let currentPage="onboarding",currentStage=0;
 const pages=document.querySelectorAll(".app-page"),toast=document.getElementById("toast"),successModal=document.getElementById("successModal"),infoPanel=document.getElementById("infoPanel"),infoKicker=document.getElementById("infoKicker"),infoTitle=document.getElementById("infoTitle"),infoDesc=document.getElementById("infoDesc"),infoSub=document.getElementById("infoSub"),infoGuideList=document.getElementById("infoGuideList"),infoNav=document.getElementById("infoNav"),gameStageLabel=document.getElementById("gameStageLabel"),gameStageTitle=document.getElementById("gameStageTitle"),gameGuide=document.getElementById("gameGuide"),gameKorean=document.getElementById("gameKorean"),gameEnglish=document.getElementById("gameEnglish"),gameProgress=document.getElementById("gameProgress"),gameReward=document.getElementById("gameReward"),successTitle=document.getElementById("successTitle"),nextStageBtn=document.getElementById("nextStageBtn"),retryBtn=document.getElementById("retryBtn"),speakBtn=document.getElementById("speakBtn"),pickSubmit=document.getElementById("pickSubmit"),previewBubble=document.getElementById("previewBubble"),resetBtn=document.getElementById("resetBtn"),openInfoBtn=document.getElementById("openInfoBtn"),mobileInfoToggle=document.getElementById("mobileInfoToggle");
 function iconToast(m){toast.textContent=m;toast.classList.add("show");clearTimeout(iconToast.t);iconToast.t=setTimeout(()=>toast.classList.remove("show"),1800)}
 function setInfo(page){const info=pageInfo[page==="game"?"game":page]||pageInfo.home;infoKicker.textContent=info.kicker;infoTitle.textContent=info.title;infoDesc.textContent=info.desc;infoSub.textContent=info.sub;infoGuideList.innerHTML=info.guide.map(v=>`<li>${v}</li>`).join("");document.querySelectorAll("#infoNav button").forEach(btn=>{const np=btn.dataset.page;btn.classList.toggle("active",(page==="game"&&np===`game-${currentStage}`)||np===page)})}
-function showPage(page){currentPage=page;pages.forEach(el=>el.classList.toggle("active",el.dataset.page===page));if(successModal)successModal.classList.remove("show");document.querySelectorAll(`[data-page="${page}"] .page-scroll`).forEach(el=>el.scrollTop=0);setInfo(page);if(innerWidth<=980)infoPanel.classList.remove("open")}
-function openStage(index){currentStage=Math.max(0,Math.min(stages.length-1,index));const x=stages[currentStage],scene=document.getElementById("gameScene");scene.className=`game-scene ${x.scene}`;scene.innerHTML='<div class="scene-city-shape"></div>';gameStageLabel.textContent=x.label;gameStageTitle.textContent=x.title;gameGuide.textContent=x.guide;gameKorean.textContent=x.ko;gameEnglish.textContent=x.en;gameProgress.style.width=x.progress+"%";gameReward.textContent=x.reward;successTitle.textContent=currentStage===4?"스페셜 미션 성공!":"발음 인식 성공!";nextStageBtn.textContent=currentStage===4?"미션 완료하고 메인으로":"다음 스테이지";showPage("game")}
+
+const validPages=new Set([...pages].map(page=>page.dataset.page));
+const stageParamValues=["2","3","4","5","special"];
+
+function getStageIndexFromParam(value){
+  if(value===null||value===undefined||value==="") return 0;
+  const normalized=String(value).toLowerCase();
+  const namedIndex=stageParamValues.indexOf(normalized);
+  if(namedIndex>=0) return namedIndex;
+
+  // 이전 테스트 URL 호환: stage=0 또는 stage=1
+  const numeric=Number(normalized);
+  if(Number.isInteger(numeric)&&numeric>=0&&numeric<stages.length&&numeric<2){
+    return numeric;
+  }
+  return 0;
+}
+
+function getRouteFromUrl(){
+  const params=new URLSearchParams(window.location.search);
+  let page=params.get("page")||"onboarding";
+  if(!validPages.has(page)) page="onboarding";
+
+  return{
+    page,
+    stageIndex:page==="game"?getStageIndexFromParam(params.get("stage")):0
+  };
+}
+
+function updateRouteUrl(page,{stageIndex=null,replace=false}={}){
+  const url=new URL(window.location.href);
+  url.searchParams.set("page",page);
+
+  if(page==="game"){
+    const safeIndex=Math.max(0,Math.min(stages.length-1,Number(stageIndex)||0));
+    url.searchParams.set("stage",stageParamValues[safeIndex]);
+  }else{
+    url.searchParams.delete("stage");
+  }
+
+  const state={
+    page,
+    stageIndex:page==="game"?Math.max(0,Math.min(stages.length-1,Number(stageIndex)||0)):null
+  };
+
+  try{
+    if(replace){
+      history.replaceState(state,"",url);
+    }else{
+      history.pushState(state,"",url);
+    }
+  }catch(error){
+    // file:// 환경에서도 화면 전환 자체는 유지
+    console.warn("URL 파라미터 갱신을 지원하지 않는 실행 환경입니다.",error);
+  }
+}
+
+function showPage(page,options={}){
+  const{
+    historyMode="push",
+    resetScroll=true
+  }=options;
+
+  const safePage=validPages.has(page)?page:"onboarding";
+  currentPage=safePage;
+
+  pages.forEach(el=>el.classList.toggle("active",el.dataset.page===safePage));
+
+  if(successModal) successModal.classList.remove("show");
+
+  if(resetScroll){
+    document.querySelectorAll(`[data-page="${safePage}"] .page-scroll`)
+      .forEach(el=>el.scrollTop=0);
+  }
+
+  setInfo(safePage);
+
+  if(innerWidth<=980) infoPanel.classList.remove("open");
+
+  if(historyMode!=="none"){
+    updateRouteUrl(safePage,{
+      replace:historyMode==="replace"
+    });
+  }
+}
+
+function openStage(index,options={}){
+  const{
+    historyMode="push"
+  }=options;
+
+  currentStage=Math.max(0,Math.min(stages.length-1,Number(index)||0));
+  const x=stages[currentStage];
+  const scene=document.getElementById("gameScene");
+
+  scene.className=`game-scene ${x.scene}`;
+  scene.innerHTML='<div class="scene-city-shape"></div>';
+  gameStageLabel.textContent=x.label;
+  gameStageTitle.textContent=x.title;
+  gameGuide.textContent=x.guide;
+  gameKorean.textContent=x.ko;
+  gameEnglish.textContent=x.en;
+  gameProgress.style.width=x.progress+"%";
+  gameReward.textContent=x.reward;
+  successTitle.textContent=currentStage===4?"스페셜 미션 성공!":"발음 인식 성공!";
+  nextStageBtn.textContent=currentStage===4?"미션 완료하고 메인으로":"다음 스테이지";
+
+  currentPage="game";
+  pages.forEach(el=>el.classList.toggle("active",el.dataset.page==="game"));
+  if(successModal) successModal.classList.remove("show");
+  document.querySelectorAll('[data-page="game"] .page-scroll').forEach(el=>el.scrollTop=0);
+  setInfo("game");
+  if(innerWidth<=980) infoPanel.classList.remove("open");
+
+  if(historyMode!=="none"){
+    updateRouteUrl("game",{
+      stageIndex:currentStage,
+      replace:historyMode==="replace"
+    });
+  }
+}
+
+function applyRouteFromUrl({replaceInvalid=false}={}){
+  const route=getRouteFromUrl();
+
+  if(route.page==="game"){
+    openStage(route.stageIndex,{historyMode:"none"});
+  }else{
+    showPage(route.page,{historyMode:"none"});
+  }
+
+  if(replaceInvalid){
+    updateRouteUrl(route.page,{
+      stageIndex:route.stageIndex,
+      replace:true
+    });
+  }
+}
+
+
 
 document.addEventListener("click",e=>{
  const go=e.target.closest("[data-go]");if(go){e.preventDefault();showPage(go.dataset.go);return}
@@ -3410,7 +3567,25 @@ document.querySelectorAll(".collect-card:not(.locked)").forEach(el=>el.addEventL
 // existing controls
 document.querySelectorAll(".pick-option").forEach(o=>o.addEventListener("click",()=>{document.querySelectorAll(".pick-option").forEach(v=>v.classList.remove("selected"));o.classList.add("selected")}));if(pickSubmit)pickSubmit.addEventListener("click",()=>{const x=document.querySelector(".pick-option.selected");iconToast(x?`${x.textContent.trim()}에 투표했습니다.`:"방문할 장소를 먼저 선택해 주세요.")});document.querySelectorAll("[data-toggle]").forEach(t=>t.addEventListener("click",()=>t.classList.toggle("on")));document.querySelectorAll(".day").forEach(d=>d.addEventListener("click",()=>d.classList.toggle("on")));document.querySelectorAll(".character-option").forEach(o=>o.addEventListener("click",()=>{document.querySelectorAll(".character-option").forEach(v=>v.classList.remove("active"));o.classList.add("active");previewBubble.textContent=o.dataset.character==="Lee Do"?"“좋은 아침이에요, 채우리. 천천히 하루를 시작해 볼까요?”":"“좋은 아침이야, 채우리. 오늘도 나랑 한국어 공부 시작해 볼까?”"}));document.querySelectorAll(".voice-choice").forEach(c=>c.addEventListener("click",()=>{document.querySelectorAll(".voice-choice").forEach(v=>v.classList.remove("selected"));c.classList.add("selected");c.querySelector("input").checked=true}));speakBtn.addEventListener("click",()=>successModal.classList.add("show"));retryBtn.addEventListener("click",()=>successModal.classList.remove("show"));nextStageBtn.addEventListener("click",()=>{successModal.classList.remove("show");currentStage<stages.length-1?openStage(currentStage+1):showPage("home")});
 navItems.forEach(([p,l])=>{const b=document.createElement("button");b.textContent=l;b.dataset.page=p;b.addEventListener("click",()=>p.startsWith("game-")?openStage(Number(p.split("-")[1])):showPage(p));infoNav.appendChild(b)});
-resetBtn.addEventListener("click",()=>showPage("onboarding"));openInfoBtn.addEventListener("click",()=>infoPanel.classList.toggle("open"));mobileInfoToggle.addEventListener("click",()=>{infoPanel.classList.toggle("open");mobileInfoToggle.textContent=infoPanel.classList.contains("open")?"설명 닫기":"페이지 설명"});document.addEventListener("keydown",e=>{if(e.key==="Escape"){successModal.classList.remove("show");infoPanel.classList.remove("open")}});showPage("onboarding");
+resetBtn.addEventListener("click",()=>showPage("onboarding"));
+openInfoBtn.addEventListener("click",()=>infoPanel.classList.toggle("open"));
+mobileInfoToggle.addEventListener("click",()=>{
+  infoPanel.classList.toggle("open");
+  mobileInfoToggle.textContent=infoPanel.classList.contains("open")?"설명 닫기":"페이지 설명";
+});
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape"){
+    successModal.classList.remove("show");
+    infoPanel.classList.remove("open");
+  }
+});
+
+window.addEventListener("popstate",()=>{
+  applyRouteFromUrl();
+});
+
+/* 최초 진입 URL의 page, stage 파라미터를 읽어 화면 표시 */
+applyRouteFromUrl({replaceInvalid:true});
 
 /* Learning Screen V2 interactions */
 (function(){
